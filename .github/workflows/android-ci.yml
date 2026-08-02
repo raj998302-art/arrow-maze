@@ -77,13 +77,16 @@ jobs:
           gradle-version: '8.9'
 
       - name: Write keystore from secrets (if provided)
-        if: ${{ secrets.ARROW_MAZE_KEYSTORE_BASE64 != '' }}
         env:
           KEYSTORE_BASE64: ${{ secrets.ARROW_MAZE_KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.ARROW_MAZE_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ARROW_MAZE_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ARROW_MAZE_KEY_PASSWORD }}
         run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "No keystore secret set — release APK will be unsigned."
+            exit 0
+          fi
           echo "$KEYSTORE_BASE64" | base64 -d > arrow-maze.jks
           cat > keystore.properties <<EOF
           storeFile=$PWD/arrow-maze.jks
