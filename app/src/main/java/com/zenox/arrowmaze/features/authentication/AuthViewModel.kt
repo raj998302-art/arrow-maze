@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -64,14 +65,19 @@ class AuthViewModel @Inject constructor(
         // has completed the auth flow on a previous launch (cold-start
         // restoration). The `hasCompletedAuth` gate prevents auto-nav from
         // firing immediately when the user explicitly lands on the Auth screen.
+        // .catch() prevents a DataStore read failure from crashing the app.
         viewModelScope.launch {
-            sessionRepository.hasCompletedAuthFlow.collect { hasCompleted ->
-                val user = currentUser.value
-                if (hasCompleted && user != null) {
-                    Timber.d("Auto-nav: hasCompletedAuth=true & user=%s", user.uid)
-                    _navEvents.send(AuthNavEvent.NavigateHome)
+            sessionRepository.hasCompletedAuthFlow
+                .catch { t ->
+                    Timber.e(t, "AuthViewModel: hasCompletedAuthFlow read failed — staying on Auth screen.")
                 }
-            }
+                .collect { hasCompleted ->
+                    val user = currentUser.value
+                    if (hasCompleted && user != null) {
+                        Timber.d("Auto-nav: hasCompletedAuth=true & user=%s", user.uid)
+                        _navEvents.send(AuthNavEvent.NavigateHome)
+                    }
+                }
         }
     }
 

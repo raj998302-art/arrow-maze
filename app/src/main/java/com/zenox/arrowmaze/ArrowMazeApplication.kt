@@ -56,6 +56,7 @@ class ArrowMazeApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
+        Timber.i("STEP: Application.onCreate — starting Arrow Maze boot sequence.")
 
         // ---- Global uncaught-exception handler ----
         // Install a last-resort handler that logs the stack trace to Timber
@@ -87,6 +88,7 @@ class ArrowMazeApplication : Application(), Configuration.Provider {
             crashlyticsManager.setCustomKey("version_code", BuildConfig.VERSION_CODE)
             crashlyticsManager.setCustomKey("version_name", BuildConfig.VERSION_NAME)
         }.onFailure { Timber.w(it, "Crashlytics/Timber init failed — continuing without crash reporting.") }
+        Timber.i("STEP: Application.onCreate — Crashlytics + Timber initialised.")
 
         // ---- Analytics: app_open event + auth-state listener ----
         // Every call here is best-effort — a Firebase init failure must
@@ -113,6 +115,7 @@ class ArrowMazeApplication : Application(), Configuration.Provider {
                 }.onFailure { Timber.w(it, "Auth-state analytics sync failed.") }
             }
         }.onFailure { Timber.w(it, "FirebaseAuth.AuthStateListener registration failed.") }
+        Timber.i("STEP: Application.onCreate — Firebase Analytics + Auth listener ready.")
 
         // ---- Audio lifecycle: pause music when the app is backgrounded ----
         registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
@@ -138,6 +141,7 @@ class ArrowMazeApplication : Application(), Configuration.Provider {
             override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
             override fun onActivityDestroyed(activity: Activity) {}
         })
+        Timber.i("STEP: Application.onCreate — boot sequence complete. Handing off to MainActivity.")
     }
 
     override fun onTerminate() {

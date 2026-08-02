@@ -99,10 +99,14 @@ class HomeViewModel @Inject constructor(
         }
 
         // Run a life-regen pass as soon as we have a profile snapshot.
+        // .catch() prevents a Room/DataStore failure from crashing the app.
         lifeRegenJob = viewModelScope.launch {
             sessionRepository.currentUidFlow
                 .flatMapLatest { uid ->
                     uid?.let { profileRepository.observeProfile(it) } ?: flowOf<Profile?>(null)
+                }
+                .catch { t ->
+                    Timber.e(t, "HomeViewModel: life-regen profile stream failed — skipping regen.")
                 }
                 .collect { profile ->
                     if (profile != null) checkLifeRegen(profile)

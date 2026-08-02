@@ -6,11 +6,13 @@ import com.zenox.arrowmaze.core.data.repository.SettingsRepository
 import com.zenox.arrowmaze.core.data.repository.UserSettings
 import com.zenox.arrowmaze.core.di.MainImmediateDispatcher
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
@@ -59,17 +61,30 @@ class ThemeManager @Inject constructor(
     private val settingsRepository: SettingsRepository,
     @MainImmediateDispatcher private val main: CoroutineDispatcher,
 ) {
-    private val scope = CoroutineScope(SupervisorJob() + main)
+    // CRITICAL: The CoroutineExceptionHandler swallows any uncaught exception
+    // from the settings collector so a DataStore IOException (common on first
+    // read) doesn't crash the app on the main thread. The app falls back to
+    // the default ThemeState() instead.
+    private val exceptionHandler = CoroutineExceptionHandler { _, t ->
+        Timber.e(t, "ThemeManager: settings flow crashed — using default theme.")
+    }
+    private val scope = CoroutineScope(SupervisorJob() + main + exceptionHandler)
 
     private val _themeState = MutableStateFlow(ThemeState())
     val themeState: StateFlow<ThemeState> = _themeState.asStateFlow()
 
     init {
         // Keep the live snapshot in sync with the persisted DataStore values.
+        // .catch() prevents a DataStore read failure from crashing the app —
+        // the default ThemeState() is kept and the error is logged.
         scope.launch {
-            settingsRepository.observe().collect { settings ->
-                _themeState.value = settings.toThemeState()
-            }
+            settingsRepository.observe()
+                .catch { t ->
+                    Timber.e(t, "ThemeManager: settings flow error — keeping default theme.")
+                }
+                .collect { settings ->
+                    _themeState.value = settings.toThemeState()
+                }
         }
     }
 
