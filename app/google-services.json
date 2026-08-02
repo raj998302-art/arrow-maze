@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "579451524411",
+    "firebase_url": "https://arrowmaze-org-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "arrowmaze-org",
+    "storage_bucket": "arrowmaze-org.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:579451524411:android:bf6271535c1e464640931e",
+        "android_client_info": {
+          "package_name": "com.zenox.arrowmaze"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "579451524411-6iopkrbqhdq7tunu1m48gggosruekjtf.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBJKXWCrJ2WMaaukPzdhbFlUZ9Har0QhKQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "579451524411-6iopkrbqhdq7tunu1m48gggosruekjtf.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

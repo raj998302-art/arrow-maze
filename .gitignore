@@ -1,0 +1,36 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+
+# Local config (NEVER commit)
+local.properties
+keystore.properties
+*.keystore
+*.jks
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.DS_Store
+
+# Kotlin
+.kotlin/
+
+# Build outputs
+*.apk
+*.aab
+*.ap_
+*.dex
+captures/
+
+# Google services (replace with your own; committed for build convenience)
+# Uncomment to ignore:
+# app/google-services.json
+
+# Logs
+*.log

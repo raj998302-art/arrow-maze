@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adaptive icon foreground: premium upward arrow on transparent (within safe zone) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- White arrow centered in the 108x108 grid (safe zone = inner 72x72) -->
+    <path
+        android:pathData="M54,22 L74,44 L64,44 L64,82 L44,82 L44,44 L34,44 Z"
+        android:fillColor="#FFFFFFFF"
+        android:fillAlpha="1.0" />
+    <!-- Subtle inner highlight for premium feel -->
+    <path
+        android:pathData="M54,22 L74,44 L64,44 L64,82 L44,82 L44,44 L34,44 Z"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeAlpha="0.25"
+        android:strokeWidth="1.5" />
+</vector>

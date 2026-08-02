@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Arrow Maze</string>
+
+    <!-- Common -->
+    <string name="common_loading">Loading…</string>
+    <string name="common_retry">Retry</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="common_confirm">Confirm</string>
+    <string name="common_save">Save</string>
+    <string name="common_close">Close</string>
+    <string name="common_continue">Continue</string>
+    <string name="common_back">Back</string>
+
+    <!-- Bottom nav -->
+    <string name="nav_home">Home</string>
+    <string name="nav_shop">Shop</string>
+    <string name="nav_profile">Profile</string>
+    <string name="nav_leaderboard">Leaders</string>
+
+    <!-- Auth -->
+    <string name="auth_sign_in">Sign In</string>
+    <string name="auth_sign_up">Sign Up</string>
+    <string name="auth_sign_in_google">Continue with Google</string>
+    <string name="auth_sign_in_guest">Continue as Guest</string>
+    <string name="auth_email">Email</string>
+    <string name="auth_password">Password</string>
+    <string name="auth_forgot_password">Forgot password?</string>
+    <string name="auth_logout">Log out</string>
+    <string name="auth_delete_account">Delete account</string>
+
+    <!-- Game -->
+    <string name="game_hint">Hint</string>
+    <string name="game_restart">Restart</string>
+    <string name="game_win_title">Solved!</string>
+    <string name="game_lose_title">Out of moves</string>
+    <string name="game_level">Level %1$d</string>
+
+    <!-- HUD -->
+    <string name="hud_coins">Coins</string>
+    <string name="hud_hints">Hints</string>
+    <string name="hud_lives">Lives</string>
+
+    <!-- Shop -->
+    <string name="shop_themes">Themes</string>
+    <string name="shop_arrow_skins">Arrow Skins</string>
+    <string name="shop_trail_fx">Trail FX</string>
+    <string name="shop_hint_packs">Hint Packs</string>
+    <string name="shop_coin_packs">Coin Packs</string>
+    <string name="shop_boards">Board Backgrounds</string>
+    <string name="shop_premium">Premium</string>
+
+    <!-- Settings -->
+    <string name="settings_theme">Theme</string>
+    <string name="settings_music">Music</string>
+    <string name="settings_sfx">Sound Effects</string>
+    <string name="settings_vibration">Vibration</string>
+    <string name="settings_high_contrast">High Contrast</string>
+    <string name="settings_color_blind">Color Blind Mode</string>
+    <string name="settings_font_scale">Font Size</string>
+
+    <!-- Achievements -->
+    <string name="achievements_title">Achievements</string>
+    <string name="achievements_unlocked">Unlocked</string>
+    <string name="achievements_locked">Locked</string>
+
+    <!-- Daily challenge -->
+    <string name="daily_title">Daily Challenge</string>
+    <string name="daily_streak">Streak: %1$d days</string>
+
+    <!-- Leaderboard -->
+    <string name="leaderboard_global">Global</string>
+    <string name="leaderboard_friends">Friends</string>
+    <string name="leaderboard_weekly">Weekly</string>
+    <string name="leaderboard_monthly">Monthly</string>
+    <string name="leaderboard_all_time">All Time</string>
+
+    <!-- Friends -->
+    <string name="friends_search">Search players</string>
+    <string name="friends_send_request">Add Friend</string>
+
+    <!-- Content descriptions for accessibility -->
+    <string name="cd_back_button">Back button</string>
+    <string name="cd_coin_icon">Coins: %1$d</string>
+    <string name="cd_hint_icon">Hints: %1$d</string>
+    <string name="cd_life_icon">Lives: %1$d</string>
+    <string name="cd_arrow_cell">Arrow cell at row %1$d column %2$d pointing %3$s</string>
+</resources>

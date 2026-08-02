@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Ad-services configuration for Privacy Sandbox / Topics / Attribution.
+  Resolves the manifest-merger conflict between play-services-ads and
+  play-services-measurement-api by providing a single canonical config.
+-->
+<ad-services-config>
+    <!-- Attribution for install / conversion measurement -->
+    <attribution allow-ad-to-personalization="true" />
+    <!-- Custom audiences for remarketing -->
+    <custom-audiences default-allow-ad-to-personalization="true" />
+    <!-- Protected audiences -->
+    <protected-audiences default-allow-ad-to-personalization="true" />
+    <!-- Topics API -->
+    <topics default-allow-ad-to-personalization="true" />
+</ad-services-config>
