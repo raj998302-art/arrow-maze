@@ -57,52 +57,64 @@ class ArrowMazeApplication : Application(), Configuration.Provider {
     override fun onCreate() {
         super.onCreate()
 
+        // ---- Global uncaught-exception handler ----
+        // Install a last-resort handler that logs the stack trace to Timber
+        // (→ Crashlytics in release) BEFORE the process dies. This ensures
+        // every crash is visible in the Crashlytics console even if the
+        // SDK's own auto-init races with the crash.
+        val previousHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            try {
+                Timber.e(throwable, "UNCAUGHT EXCEPTION on %s", thread.name)
+            } catch (_: Throwable) { /* never crash inside the crash handler */ }
+            previousHandler?.uncaughtException(thread, throwable)
+        }
+
         // ---- Logging: Timber trees ----
-        // Debug: plant DebugTree (full logcat output, no Crashlytics).
-        // Release: plant CrashlyticsTree (breadcrumbs + non-fatals in the
-        // Crashlytics console).
-        if (BuildConfig.DEBUG) {
-            if (Timber.treeCount == 0) Timber.plant(Timber.DebugTree())
-            crashlyticsManager.setCollectionEnabled(false)
-        } else {
-            if (Timber.treeCount == 0) Timber.plant(crashlyticsTree)
-            crashlyticsManager.setCollectionEnabled(true)
-        }
-
-        // ---- Crashlytics: app-level custom keys ----
-        // Slice crashes in the console by build type + version so we can
-        // tell dev crashes from production crashes at a glance.
-        crashlyticsManager.setCustomKey("build_type", BuildConfig.BUILD_TYPE)
-        crashlyticsManager.setCustomKey("debug", BuildConfig.DEBUG)
-        crashlyticsManager.setCustomKey("version_code", BuildConfig.VERSION_CODE)
-        crashlyticsManager.setCustomKey("version_name", BuildConfig.VERSION_NAME)
-
-        // ---- Analytics: app_open event + user properties ----
-        // The user_id is set/cleared reactively from FirebaseAuth so every
-        // subsequent analytics event is attributed to the right player.
-        firebaseAnalytics.logEvent(FirebaseAnalytics.Event.APP_OPEN) {
-            param("build_type", BuildConfig.BUILD_TYPE)
-        }
-        FirebaseAuth.getInstance().addAuthStateListener { auth ->
-            val user = auth.currentUser
-            if (user != null) {
-                firebaseAnalytics.setUserId(user.uid)
-                firebaseAnalytics.setUserProperty("is_guest", user.isAnonymous.toString())
-                crashlyticsManager.setUserId(user.uid)
+        // Wrapped in runCatching so a missing Crashlytics init (e.g. if
+        // google-services.json wasn't processed) doesn't prevent the app
+        // from booting.
+        runCatching {
+            if (BuildConfig.DEBUG) {
+                if (Timber.treeCount == 0) Timber.plant(Timber.DebugTree())
+                crashlyticsManager.setCollectionEnabled(false)
             } else {
-                firebaseAnalytics.setUserId(null)
-                firebaseAnalytics.setUserProperty("is_guest", null)
-                crashlyticsManager.setUserId(null)
+                if (Timber.treeCount == 0) Timber.plant(crashlyticsTree)
+                crashlyticsManager.setCollectionEnabled(true)
             }
-        }
+            crashlyticsManager.setCustomKey("build_type", BuildConfig.BUILD_TYPE)
+            crashlyticsManager.setCustomKey("debug", BuildConfig.DEBUG)
+            crashlyticsManager.setCustomKey("version_code", BuildConfig.VERSION_CODE)
+            crashlyticsManager.setCustomKey("version_name", BuildConfig.VERSION_NAME)
+        }.onFailure { Timber.w(it, "Crashlytics/Timber init failed — continuing without crash reporting.") }
+
+        // ---- Analytics: app_open event + auth-state listener ----
+        // Every call here is best-effort — a Firebase init failure must
+        // NEVER prevent the app from reaching the first screen.
+        runCatching {
+            firebaseAnalytics.logEvent(FirebaseAnalytics.Event.APP_OPEN) {
+                param("build_type", BuildConfig.BUILD_TYPE)
+            }
+        }.onFailure { Timber.w(it, "FirebaseAnalytics.logEvent(APP_OPEN) failed.") }
+
+        runCatching {
+            FirebaseAuth.getInstance().addAuthStateListener { auth ->
+                val user = auth.currentUser
+                runCatching {
+                    if (user != null) {
+                        firebaseAnalytics.setUserId(user.uid)
+                        firebaseAnalytics.setUserProperty("is_guest", user.isAnonymous.toString())
+                        crashlyticsManager.setUserId(user.uid)
+                    } else {
+                        firebaseAnalytics.setUserId(null)
+                        firebaseAnalytics.setUserProperty("is_guest", null)
+                        crashlyticsManager.setUserId(null)
+                    }
+                }.onFailure { Timber.w(it, "Auth-state analytics sync failed.") }
+            }
+        }.onFailure { Timber.w(it, "FirebaseAuth.AuthStateListener registration failed.") }
 
         // ---- Audio lifecycle: pause music when the app is backgrounded ----
-        // Tracks the number of started Activities via standard Application
-        // callbacks (no extra dependency on lifecycle-process). When the
-        // count drops to 0 we pause music; when it returns to 1 we resume.
-        // The AudioManager itself is created lazily on first injection, so
-        // these callbacks only do work after the first screen that needs
-        // audio has booted it.
         registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
             override fun onActivityStarted(activity: Activity) {
                 if (startedActivityCount == 0) {
@@ -120,7 +132,6 @@ class ArrowMazeApplication : Application(), Configuration.Provider {
                 }
             }
 
-            // Unused but required by the interface.
             override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {}
             override fun onActivityResumed(activity: Activity) {}
             override fun onActivityPaused(activity: Activity) {}

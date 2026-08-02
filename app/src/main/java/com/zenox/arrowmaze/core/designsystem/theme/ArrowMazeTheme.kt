@@ -1,6 +1,8 @@
 package com.zenox.arrowmaze.core.designsystem.theme
 
 import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -18,6 +20,21 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import com.zenox.arrowmaze.core.domain.model.GameTheme
+
+/**
+ * Safely unwraps a [Context] (which may be a [ContextWrapper] such as
+ * `ContextThemeWrapper` or `MutableContextWrapper` used by Compose under
+ * edge-to-edge / `Scaffold`) to find the hosting [Activity].
+ *
+ * Returns `null` if no Activity is in the wrapper chain — callers MUST
+ * handle that (the system bar colour update is cosmetic and should be
+ * skipped, not crashed on, when the Activity isn't reachable).
+ */
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
 
 private val LightColors = lightColorScheme(
     primary = LightPrimary,
@@ -144,12 +161,24 @@ fun ArrowMazeTheme(
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
-            val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.background.toArgb()
-            window.navigationBarColor = colorScheme.background.toArgb()
-            WindowCompat.getInsetsController(window, view).apply {
-                isAppearanceLightStatusBars = !resolvedDark
-                isAppearanceLightNavigationBars = !resolvedDark
+            // Safely unwrap the Activity from the view context — it may be
+            // wrapped in a ContextThemeWrapper (especially under edge-to-edge
+            // + Scaffold). A direct `as Activity` cast crashes with
+            // ClassCastException on certain OEM roms / wrapper setups.
+            val activity = view.context.findActivity()
+            if (activity != null) {
+                try {
+                    @Suppress("DEPRECATION")
+                    activity.window.statusBarColor = colorScheme.background.toArgb()
+                    @Suppress("DEPRECATION")
+                    activity.window.navigationBarColor = colorScheme.background.toArgb()
+                    WindowCompat.getInsetsController(activity.window, view).apply {
+                        isAppearanceLightStatusBars = !resolvedDark
+                        isAppearanceLightNavigationBars = !resolvedDark
+                    }
+                } catch (t: Throwable) {
+                    // Status/nav bar color is cosmetic — never crash the app for it.
+                }
             }
         }
     }
