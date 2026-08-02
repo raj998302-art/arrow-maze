@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.onEach
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.LazyThreadSafetyMode.PUBLICATION
 
 /**
  * Background-music tracks. Each value maps to a raw resource name
@@ -78,16 +79,23 @@ class AudioManager @Inject constructor(
     /** Background-music player — lazily created on first [playMusic]. */
     @Volatile private var musicPlayer: MediaPlayer? = null
 
-    /** SFX player — created eagerly with `USAGE_GAME` audio attributes. */
-    private val soundPool: SoundPool = SoundPool.Builder()
-        .setMaxStreams(4)
-        .setAudioAttributes(
-            AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_GAME)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .build()
-        )
-        .build()
+    /**
+     * SFX player — created lazily on first [playSfx] / [playMusic] call so
+     * the AudioManager construction never blocks the main thread on
+     * SoundPool's native init. The `PUBLICATION` mode is safe because every
+     * call site synchronises on `this` (the singleton).
+     */
+    private val soundPool: SoundPool by lazy(PUBLICATION) {
+        SoundPool.Builder()
+            .setMaxStreams(4)
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_GAME)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+            )
+            .build()
+    }
 
     /** Cache of `Sfx → soundId` returned by `soundPool.load`. */
     private val sfxIds = mutableMapOf<Sfx, Int>()
@@ -113,14 +121,35 @@ class AudioManager @Inject constructor(
     /** Active settings-flow collector — cancelled in [release]. */
     private var settingsJob: Job? = null
 
+    /** True once [start] has been called — guards against re-entrancy. */
+    @Volatile private var started: Boolean = false
+
     init {
         // Pre-touch the SFX availability cache so playSfx doesn't hit
-        // resources.getDrawable on the audio thread.
+        // resources.getIdentifier on the audio thread. This is a cheap
+        // resources lookup and does NOT allocate the SoundPool.
         Sfx.entries.forEach { sfx ->
             sfxAvailable[sfx] = resolveRawId(sfx.rawResName) != 0
         }
-        // Start observing settings so volume changes propagate live.
-        observeSettings()
+        // NOTE: observeSettings() + SoundPool creation are deferred to
+        // [start] so the singleton constructor stays allocation-free.
+        // Callers (e.g. ArrowMazeApplication) should invoke [start] on app
+        // launch; the first [playMusic] / [playSfx] call also triggers it
+        // defensively.
+    }
+
+    /**
+     * Boots the reactive settings subscription. Safe to call multiple times
+     * — the second call is a no-op. Idempotent so callers don't need to
+     * coordinate.
+     */
+    fun start() {
+        if (started) return
+        synchronized(this) {
+            if (started) return
+            started = true
+            observeSettings()
+        }
     }
 
     /**
@@ -129,6 +158,7 @@ class AudioManager @Inject constructor(
      * and creates a new one.
      */
     fun playMusic(track: MusicTrack) {
+        ensureStarted()
         if (currentTrack == track && musicPlayer?.isPlaying == true) {
             Timber.d("playMusic: track=$track already playing — no-op.")
             return
@@ -199,6 +229,7 @@ class AudioManager @Inject constructor(
      * sound is still loading.
      */
     fun playSfx(sfx: Sfx) {
+        ensureStarted()
         if (sfxVolume == 0) {
             Timber.d("playSfx: skipping $sfx — sfxVolume=0.")
             return
@@ -258,12 +289,25 @@ class AudioManager @Inject constructor(
         settingsJob = null
         stopMusicInternal()
         currentTrack = null
-        try {
-            soundPool.release()
-        } catch (t: Throwable) {
-            Timber.w(t, "SoundPool.release failed.")
+        // Only release the SoundPool if it was actually created (lazy).
+        if (started) {
+            try {
+                soundPool.release()
+            } catch (t: Throwable) {
+                Timber.w(t, "SoundPool.release failed.")
+            }
         }
         scope.cancel()
+        started = false
+    }
+
+    /**
+     * Defensive: boot the settings subscription on first audio call so
+     * callers that don't explicitly invoke [start] still get reactive
+     * volume updates. Idempotent.
+     */
+    private fun ensureStarted() {
+        if (!started) start()
     }
 
     // ---- Internals ----

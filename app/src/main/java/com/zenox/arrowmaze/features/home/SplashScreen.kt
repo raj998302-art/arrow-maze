@@ -73,16 +73,17 @@ class SplashViewModel @Inject constructor(
         auth.currentUser,
         sessionRepository.hasCompletedAuthFlow,
     ) { user, hasCompleted ->
-        when {
-            user != null && hasCompleted -> SplashRouting.GoHome
-            user == null && hasCompleted -> SplashRouting.GoAuth
-            // While auth is being restored from disk (hasCompleted == false),
-            // wait for the user snapshot to settle. Once it does, route
-            // accordingly. The 1s min-delay is enforced by the screen so
-            // the splash brand frame is visible even on instant decisions.
-            user != null -> SplashRouting.Loading
-            else -> SplashRouting.Loading
-        }
+        // Routing decision:
+        //  - user != null          → GoHome (cold-start restore of signed-in user,
+        //                            whether email/Google/guest)
+        //  - user == null          → GoAuth (fresh install OR signed out)
+        //
+        // `hasCompleted` is intentionally NOT used to gate the decision — it caused
+        // a deadlock on fresh installs (user=null + hasCompleted=false → Loading
+        // forever → app appeared frozen → ANR/crash after 10s). Firebase Auth's
+        // AuthStateListener fires synchronously with the current state on subscribe,
+        // so `auth.currentUser` resolves within milliseconds.
+        if (user != null) SplashRouting.GoHome else SplashRouting.GoAuth
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,

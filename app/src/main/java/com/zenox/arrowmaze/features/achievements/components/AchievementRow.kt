@@ -1,5 +1,6 @@
 package com.zenox.arrowmaze.features.achievements.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,9 +21,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -111,6 +116,21 @@ private fun AchievementIcon(display: AchievementDisplay) {
         display.achievement.isHidden -> ArrowMazeIcons.Sparkle
         else -> ArrowMazeIcons.Lock
     }
+    // HTML reference: locked achievements render their icon with
+    // `filter:grayscale(1) opacity(.4)`. Compose's ColorMatrix applies
+    // the same desaturation; `alpha(.4f)` matches the opacity rule.
+    // Material3 `Icon` has no `colorFilter` parameter, so we render via
+    // `foundation.Image` which exposes the full `ColorFilter` API. For
+    // unlocked icons we use `ColorFilter.tint(..., SrcIn)` to mirror the
+    // `Icon(tint = …)` behaviour; for locked ones we apply the grayscale
+    // matrix on top of the original vector colors.
+    val grayscaleMatrix = ColorMatrix().apply { setToSaturation(0f) }
+    val colorFilter = if (display.isUnlocked) {
+        ColorFilter.tint(iconTint, BlendMode.SrcIn)
+    } else {
+        ColorFilter.colorMatrix(grayscaleMatrix)
+    }
+    val iconAlpha = if (display.isUnlocked) 1f else 0.4f
     Box(
         modifier = Modifier
             .size(48.dp)
@@ -132,11 +152,13 @@ private fun AchievementIcon(display: AchievementDisplay) {
             ),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(
+        Image(
             imageVector = iconVector,
             contentDescription = null,
-            tint = iconTint,
-            modifier = Modifier.size(24.dp),
+            colorFilter = colorFilter,
+            modifier = Modifier
+                .size(24.dp)
+                .alpha(iconAlpha),
         )
     }
 }

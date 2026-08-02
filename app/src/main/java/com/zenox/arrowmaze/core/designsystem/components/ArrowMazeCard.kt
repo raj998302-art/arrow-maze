@@ -14,7 +14,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.zenox.arrowmaze.core.designsystem.theme.BrandBlue
 import com.zenox.arrowmaze.core.designsystem.theme.BrandViolet
@@ -27,11 +29,15 @@ import com.zenox.arrowmaze.core.designsystem.tokens.SpacingTokens
  * - [Elevated] — surface + soft shadow for prominent content.
  * - [Outlined] — flat surface with 1dp outlineVariant border.
  * - [Gradient] — surface wrapped in a 1dp brand-blue→violet gradient border.
+ * - [Glass]    — translucent surface + brand-tinted shadow + 1dp hairline
+ *                border, simulating the HTML `backdrop-filter:blur(10px)` +
+ *                `rgba(255,255,255,.72)` glass effect used for HUD chips and
+ *                modal cards.
  */
-enum class CardVariant { Elevated, Outlined, Gradient }
+enum class CardVariant { Elevated, Outlined, Gradient, Glass }
 
 /**
- * Reusable content card with optional header and three visual variants.
+ * Reusable content card with optional header and four visual variants.
  * 16.dp rounded corners, [SpacingTokens.lg] inner padding by default.
  */
 @Composable
@@ -84,6 +90,50 @@ fun ArrowMazeCard(
                 Surface(
                     shape = shape,
                     color = cs.surface,
+                ) {
+                    CardContent(header = header, content = content, padding = innerPadding)
+                }
+            }
+        }
+
+        CardVariant.Glass -> {
+            // Glass simulates backdrop-filter:blur(10px) + rgba(255,255,255,.72)
+            // by layering a translucent surface with a subtle vertical gradient
+            // highlight on top. Real backdrop blur requires RenderEffect (API 31+)
+            // and isn't trivially expressible in a Card primitive — this layered
+            // approach matches the visual feel of the HTML reference on every
+            // API level.
+            val glassColor = cs.surface.copy(alpha = 0.72f)
+            Box(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .shadow(
+                        elevation = 10.dp,
+                        shape = shape,
+                        ambientColor = BrandBlue.copy(alpha = 0.14f),
+                        spotColor = BrandViolet.copy(alpha = 0.18f),
+                    )
+                    .background(color = glassColor, shape = shape),
+            ) {
+                // Subtle top-down highlight strip — emulates the diffuse
+                // reflection on real glass.
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.18f),
+                                    Color.White.copy(alpha = 0.0f),
+                                ),
+                            ),
+                            shape = shape,
+                        ),
+                )
+                Surface(
+                    shape = shape,
+                    color = Color.Transparent,
+                    border = BorderStroke(1.dp, cs.onSurface.copy(alpha = 0.10f)),
                 ) {
                     CardContent(header = header, content = content, padding = innerPadding)
                 }

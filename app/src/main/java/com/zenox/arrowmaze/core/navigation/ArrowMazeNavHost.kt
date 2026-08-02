@@ -1,5 +1,10 @@
 package com.zenox.arrowmaze.core.navigation
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -24,6 +29,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.zenox.arrowmaze.core.designsystem.tokens.MotionTokens
 
 /**
  * Bottom-navigation roots.
@@ -86,10 +92,58 @@ fun ArrowMazeNavHost(
             }
         },
     ) { innerPadding ->
+        // AUDIT-1: HTML reference uses `screenIn .35s ease` (fade + 12px
+        // upward slide) for every screen change. We replicate the exact
+        // duration + easing here so navigation feels identical to the
+        // original web game.
         NavHost(
             navController = navController,
             startDestination = startDestination.route,
             modifier = Modifier.fillMaxSize().padding(innerPadding),
+            enterTransition = {
+                fadeIn(
+                    animationSpec = tween(
+                        durationMillis = MotionTokens.ScreenEnterDurationMs,
+                        easing = MotionTokens.ScreenEnterEasing,
+                    ),
+                ) + slideInVertically(
+                    initialOffsetY = { SCREEN_ENTER_SLIDE_PX },
+                    animationSpec = tween(
+                        durationMillis = MotionTokens.ScreenEnterDurationMs,
+                        easing = MotionTokens.ScreenEnterEasing,
+                    ),
+                )
+            },
+            exitTransition = {
+                fadeOut(
+                    animationSpec = tween(
+                        durationMillis = MotionTokens.ScreenEnterDurationMs,
+                        easing = MotionTokens.ScreenEnterEasing,
+                    ),
+                )
+            },
+            popEnterTransition = {
+                fadeIn(
+                    animationSpec = tween(
+                        durationMillis = MotionTokens.ScreenEnterDurationMs,
+                        easing = MotionTokens.ScreenEnterEasing,
+                    ),
+                )
+            },
+            popExitTransition = {
+                fadeOut(
+                    animationSpec = tween(
+                        durationMillis = MotionTokens.ScreenEnterDurationMs,
+                        easing = MotionTokens.ScreenEnterEasing,
+                    ),
+                ) + slideOutVertically(
+                    targetOffsetY = { SCREEN_ENTER_SLIDE_PX },
+                    animationSpec = tween(
+                        durationMillis = MotionTokens.ScreenEnterDurationMs,
+                        easing = MotionTokens.ScreenEnterEasing,
+                    ),
+                )
+            },
         ) {
             composable(Destination.Splash.route) {
                 com.zenox.arrowmaze.features.home.SplashScreen(
@@ -214,8 +268,7 @@ fun ArrowMazeNavHost(
                     onBack = { navController.popBackStack() },
                 )
             }
-            composable(
-                route = Destination.ShopItem.PATTERN,
+            composable(Destination.ShopItem.PATTERN,
                 arguments = listOf(navArgument("itemId") { type = NavType.StringType }),
             ) {
                 com.zenox.arrowmaze.features.shop.ShopItemDetailScreen(
@@ -226,4 +279,11 @@ fun ArrowMazeNavHost(
         }
     }
 }
+
+/**
+ * Vertical slide offset (in px) for the screenIn transition. Matches the
+ * HTML reference's `translateY(12px)` entrance — small enough to feel
+ * like a subtle elevation rather than a swipe.
+ */
+private const val SCREEN_ENTER_SLIDE_PX: Int = 12
 

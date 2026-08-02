@@ -57,6 +57,39 @@ object MotionTokens {
     /** Spring-like overshoot for celebratory UI (win dialog, coin pops). */
     val OvershootEasing: Easing = CubicBezierEasing(0.34f, 1.56f, 0.64f, 1.0f)
 
+    /**
+     * Modal "popIn" easing — matches the HTML reference's
+     * `cubic-bezier(.2,1.4,.4,1)` keyframe used for `.modal` entrance.
+     * Slight overshoot gives dialogs a tactile scale-in feel.
+     */
+    val PopInEasing: Easing = CubicBezierEasing(0.2f, 1.4f, 0.4f, 1.0f)
+
+    /**
+     * Toast easing — matches the HTML reference's
+     * `cubic-bezier(.2,1.3,.4,1)` transition on `#toast.show`. Used for
+     * slide-in-from-top notifications and one-shot banners.
+     */
+    val ToastEasing: Easing = CubicBezierEasing(0.2f, 1.3f, 0.4f, 1.0f)
+
+    /**
+     * Button-press easing — matches the HTML `.btn:active { transition:
+     * transform .12s ease }` rule. Used for the 0.95-scale tap feedback
+     * on `ArrowMazeButton.Primary`.
+     */
+    val PressEasing: Easing = CubicBezierEasing(0.4f, 0.0f, 0.2f, 1.0f)
+
+    /** Logo floaty duration — matches HTML `floaty 3.2s ease-in-out infinite`. */
+    const val LogoFloatyDurationMs: Int = 3_200
+
+    /**
+     * Screen entrance duration — matches HTML `screenIn .35s ease`.
+     * Used by NavHost screen transitions.
+     */
+    const val ScreenEnterDurationMs: Int = 350
+
+    /** Screen entrance easing — decelerate, matches HTML `screenIn .35s ease`. */
+    val ScreenEnterEasing: Easing = CubicBezierEasing(0.0f, 0.0f, 0.2f, 1.0f)
+
     /** Linear — used for indeterminate infinite animations. Aliases the
      *  Compose `LinearEasing` so callers can stay within `MotionTokens.*`. */
     val LinearMotion: Easing = LinearEasing

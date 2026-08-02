@@ -1,6 +1,10 @@
 package com.zenox.arrowmaze.features.home
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -16,6 +20,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -63,6 +68,7 @@ import com.zenox.arrowmaze.core.designsystem.components.LoadingState
 import com.zenox.arrowmaze.core.designsystem.icons.ArrowMazeIcons
 import com.zenox.arrowmaze.core.designsystem.theme.BrandBlue
 import com.zenox.arrowmaze.core.designsystem.theme.BrandViolet
+import com.zenox.arrowmaze.core.designsystem.tokens.MotionTokens
 import com.zenox.arrowmaze.core.designsystem.tokens.SpacingTokens
 import com.zenox.arrowmaze.features.home.components.DailyStreakBanner
 import com.zenox.arrowmaze.features.home.components.HeroLevelCard
@@ -317,6 +323,27 @@ private fun HomeContent(
 @Composable
 private fun HomeTopBar(onSettings: () -> Unit) {
     val cs = MaterialTheme.colorScheme
+
+    // Logo floaty animation — matches HTML `@keyframes floaty` (3.2s,
+    // ease-in-out, translateY -7px). Drives both the disc and the wordmark
+    // so the whole brand lockup breathes.
+    val floatyTransition = rememberInfiniteTransition(label = "logo-floaty")
+    val floatyProgress by floatyTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = MotionTokens.LogoFloatyDurationMs,
+                easing = androidx.compose.animation.core.FastOutSlowInEasing,
+            ),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "logo-floaty-progress",
+    )
+    // Lerp 0..1 → 0..-7dp using a sinusoidal curve (cos) so the motion
+    // slows at the extremes — matches the ease-in-out feel of the CSS rule.
+    val floatyOffsetDp = (7f * (0.5f - 0.5f * kotlin.math.cos(floatyProgress * Math.PI).toFloat())) * -1f
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -328,6 +355,7 @@ private fun HomeTopBar(onSettings: () -> Unit) {
             Box(
                 modifier = Modifier
                     .size(40.dp)
+                    .offset(y = floatyOffsetDp.dp)
                     .clip(CircleShape)
                     .background(brush = Brush.linearGradient(colors = listOf(BrandBlue, BrandViolet))),
                 contentAlignment = Alignment.Center,
@@ -340,10 +368,16 @@ private fun HomeTopBar(onSettings: () -> Unit) {
                 )
             }
             Spacer(Modifier.width(SpacingTokens.sm))
+            // Gradient wordmark — matches HTML `.logo h1` `background-clip:text`
+            // gradient rule. Uses Compose's TextStyle(brush = …) which is the
+            // direct equivalent of CSS `-webkit-background-clip:text`.
             Text(
                 text = "Arrow Maze",
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                color = cs.onSurface,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.Black,
+                    brush = Brush.linearGradient(colors = listOf(BrandBlue, BrandViolet)),
+                ),
+                modifier = Modifier.offset(y = floatyOffsetDp.dp),
             )
         }
         ArrowMazeIconButton(

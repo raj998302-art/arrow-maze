@@ -33,6 +33,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -44,6 +46,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.zenox.arrowmaze.R
 import com.zenox.arrowmaze.core.designsystem.icons.ArrowMazeIcons
+import com.zenox.arrowmaze.core.designsystem.theme.BrandBlue
+import com.zenox.arrowmaze.core.designsystem.theme.BrandViolet
 import com.zenox.arrowmaze.core.designsystem.tokens.ElevationTokens
 import com.zenox.arrowmaze.core.designsystem.tokens.MotionTokens
 import com.zenox.arrowmaze.core.designsystem.tokens.SpacingTokens
@@ -108,7 +112,7 @@ fun ArrowMazeDialog(
                 }
             }
         } else null,
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(26.dp),
         containerColor = cs.surface,
         iconContentColor = cs.primary,
         titleContentColor = cs.onSurface,
@@ -145,10 +149,38 @@ fun WinDialog(
         iconVisible = true
     }
 
+    // Modal popIn: scale 0.8 → 1.0 with HTML's exact cubic-bezier(.2,1.4,.4,1)
+    // over 320ms. Matches the HTML `.modal { animation: popIn .32s
+    // cubic-bezier(.2,1.4,.4,1) }` keyframe.
+    var dialogVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        // Single-frame delay so animateFloatAsState picks up the transition.
+        dialogVisible = true
+    }
+    val popInScale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (dialogVisible) 1f else 0.8f,
+        animationSpec = tween(
+            durationMillis = POP_IN_DURATION_MS,
+            easing = MotionTokens.PopInEasing,
+        ),
+        label = "win-pop-in",
+    )
+    val popInAlpha by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (dialogVisible) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = MotionTokens.DurationMedium,
+            easing = MotionTokens.EmphasizedDecelerateEasing,
+        ),
+        label = "win-pop-in-alpha",
+    )
+
     Dialog(onDismissRequest = onContinue) {
         Surface(
-            modifier = modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp),
+            modifier = modifier
+                .fillMaxWidth()
+                .scale(popInScale, popInScale)
+                .graphicsLayerAlpha(popInAlpha),
+            shape = RoundedCornerShape(26.dp),
             color = cs.surface,
             tonalElevation = ElevationTokens.Level3,
             shadowElevation = ElevationTokens.Level4,
@@ -193,10 +225,16 @@ fun WinDialog(
                     }
                 }
                 Spacer(Modifier.height(SpacingTokens.lg))
+                // Gradient title — matches HTML `.modal h2 { background:
+                // linear-gradient(90deg,var(--accent1),var(--accent2));
+                // -webkit-background-clip:text;color:transparent }`.
                 Text(
                     text = stringResource(R.string.game_win_title),
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = cs.onSurface,
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontWeight = FontWeight.Black,
+                        brush = Brush.linearGradient(colors = listOf(BrandBlue, BrandViolet)),
+                    ),
+                    textAlign = TextAlign.Center,
                 )
                 Spacer(Modifier.height(SpacingTokens.sm))
                 Text(
@@ -245,10 +283,34 @@ fun LoseDialog(
     if (!visible) return
     val cs = MaterialTheme.colorScheme
 
+    // Modal popIn — matches HTML `.modal { animation: popIn .32s
+    // cubic-bezier(.2,1.4,.4,1) }`.
+    var dialogVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { dialogVisible = true }
+    val popInScale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (dialogVisible) 1f else 0.8f,
+        animationSpec = tween(
+            durationMillis = POP_IN_DURATION_MS,
+            easing = MotionTokens.PopInEasing,
+        ),
+        label = "lose-pop-in",
+    )
+    val popInAlpha by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (dialogVisible) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = MotionTokens.DurationMedium,
+            easing = MotionTokens.EmphasizedDecelerateEasing,
+        ),
+        label = "lose-pop-in-alpha",
+    )
+
     Dialog(onDismissRequest = onRetry) {
         Surface(
-            modifier = modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp),
+            modifier = modifier
+                .fillMaxWidth()
+                .scale(popInScale, popInScale)
+                .graphicsLayerAlpha(popInAlpha),
+            shape = RoundedCornerShape(26.dp),
             color = cs.surface,
             tonalElevation = ElevationTokens.Level3,
             shadowElevation = ElevationTokens.Level4,
@@ -276,10 +338,14 @@ fun LoseDialog(
                     )
                 }
                 Spacer(Modifier.height(SpacingTokens.lg))
+                // Gradient title — matches HTML `.modal h2` gradient-clip rule.
                 Text(
                     text = stringResource(R.string.game_lose_title),
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = cs.onSurface,
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontWeight = FontWeight.Black,
+                        brush = Brush.linearGradient(colors = listOf(BrandBlue, BrandViolet)),
+                    ),
+                    textAlign = TextAlign.Center,
                 )
                 Spacer(Modifier.height(SpacingTokens.sm))
                 Text(
@@ -349,3 +415,14 @@ private fun formatTime(seconds: Int): String {
     val secs = safeSeconds % 60
     return "%d:%02d".format(minutes, secs)
 }
+
+/**
+ * Inline helper that applies a graphics-layer alpha to a Modifier — keeps
+ * the popIn animation readable without pulling in another import at every
+ * call site.
+ */
+private fun Modifier.graphicsLayerAlpha(alphaValue: Float): Modifier =
+    this.alpha(alphaValue)
+
+/** Duration of the HTML `.modal` popIn keyframe — `animation: popIn .32s …`. */
+private const val POP_IN_DURATION_MS: Int = 320

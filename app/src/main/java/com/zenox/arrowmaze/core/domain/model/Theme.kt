@@ -53,26 +53,30 @@ data class GameTheme(
     companion object {
         /** Canonical 13-theme catalogue shipped with the app. */
         val ALL_THEMES: List<GameTheme> = listOf(
+            // Light — matches the HTML `--accent1:#3b6cff` / `--accent2:#7b4dff`
+            // brand colours so the Material 3 light scheme + the gradient
+            // buttons draw from the exact same palette as the HTML reference.
             GameTheme(
                 id = "light", displayName = "Light", isDark = false, isPremium = false, price = 0,
                 colors = ThemeColors(
-                    primary = "#3F51B5", secondary = "#5C6BC0", tertiary = "#FFB300",
-                    background = "#FAFAFA", surface = "#FFFFFF",
-                    onBackground = "#1A1A1A", onSurface = "#212121",
-                    arrowFill = "#3F51B5", trailStart = "#5C6BC0", trailEnd = "#7E57C2",
+                    primary = "#3B6CFF", secondary = "#7B4DFF", tertiary = "#FFB300",
+                    background = "#EEF3FF", surface = "#FFFFFF",
+                    onBackground = "#16213D", onSurface = "#16213D",
+                    arrowFill = "#3B6CFF", trailStart = "#3B6CFF", trailEnd = "#7B4DFF",
                     goalFill = "#4CAF50", startFill = "#FFB300",
-                    cellEmpty = "#E0E0E0", cellTapped = "#FFD54F", boardFrame = "#9E9E9E"
+                    cellEmpty = "#EEF2FB", cellTapped = "#FFD54F", boardFrame = "#DFE6F5"
                 )
             ),
+            // Dark — matches the HTML theme-dark body gradient (#0d1424 → #131c33).
             GameTheme(
                 id = "dark", displayName = "Dark", isDark = true, isPremium = false, price = 0,
                 colors = ThemeColors(
-                    primary = "#7986CB", secondary = "#9575CD", tertiary = "#FFB74D",
-                    background = "#121212", surface = "#1E1E1E",
-                    onBackground = "#EEEEEE", onSurface = "#E0E0E0",
-                    arrowFill = "#7986CB", trailStart = "#9575CD", trailEnd = "#64B5F6",
+                    primary = "#5D85FF", secondary = "#9D75FF", tertiary = "#FFB74D",
+                    background = "#0D1424", surface = "#1A2340",
+                    onBackground = "#EAF0FF", onSurface = "#EAF0FF",
+                    arrowFill = "#5D85FF", trailStart = "#5D85FF", trailEnd = "#9D75FF",
                     goalFill = "#66BB6A", startFill = "#FFB74D",
-                    cellEmpty = "#2C2C2C", cellTapped = "#FFD54F", boardFrame = "#424242"
+                    cellEmpty = "#1D2747", cellTapped = "#FFD54F", boardFrame = "#27335C"
                 )
             ),
             GameTheme(

@@ -1,14 +1,23 @@
 package com.zenox.arrowmaze.core.designsystem.components
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -26,13 +35,21 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.zenox.arrowmaze.core.designsystem.tokens.MotionTokens
 import com.zenox.arrowmaze.core.designsystem.tokens.SpacingTokens
 
 /**
@@ -45,12 +62,18 @@ enum class ButtonStyle { Primary, Secondary, Tonal, Glass, Outline }
  * Branded Material 3 button with optional leading/trailing icons and an
  * inline loading state. Touch target ≥ 48.dp on every variant.
  *
- * - [ButtonStyle.Primary]   — filled, primary container.
- * - [ButtonStyle.Secondary] — filled, secondary container (brand violet).
- * - [ButtonStyle.Tonal]     — filled tonal, secondaryContainer.
- * - [ButtonStyle.Outline]   — outlined with primary-coloured label.
- * - [ButtonStyle.Glass]     — translucent surface + 15% on-surface border
- *                             for use over gradient backgrounds (auth/home).
+ * Visual parity with the HTML reference (Phase AUDIT-1):
+ *  - [ButtonStyle.Primary]   — brand-blue→violet gradient fill, 18dp radius,
+ *                              17sp bold label, animated `.sheen` overlay
+ *                              sweeping left→right every 3 seconds, and a
+ *                              `scale(.95)` press feedback matching the
+ *                              HTML `.btn:active { transform:scale(.95) }`
+ *                              rule with `transition:transform .12s ease`.
+ *  - [ButtonStyle.Secondary] — filled, secondary container (brand violet).
+ *  - [ButtonStyle.Tonal]     — filled tonal, secondaryContainer.
+ *  - [ButtonStyle.Outline]   — outlined with primary-coloured label.
+ *  - [ButtonStyle.Glass]     — translucent surface + 15% on-surface border
+ *                              for use over gradient backgrounds (auth/home).
  */
 @Composable
 fun ArrowMazeButton(
@@ -64,7 +87,7 @@ fun ArrowMazeButton(
     isLoading: Boolean = false,
 ) {
     val cs = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(16.dp)
+    val shape = RoundedCornerShape(18.dp)
     val contentPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp)
     val effectiveEnabled = enabled && !isLoading
 
@@ -88,7 +111,10 @@ fun ArrowMazeButton(
             }
             Text(
                 text = text,
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.labelLarge.copy(
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 17.sp,
+                ),
             )
             if (trailingIcon != null) {
                 Spacer(Modifier.width(SpacingTokens.sm))
@@ -102,20 +128,83 @@ fun ArrowMazeButton(
     }
 
     when (style) {
-        ButtonStyle.Primary -> Button(
-            onClick = onClick,
-            modifier = modifier.defaultMinSize(minHeight = 48.dp),
-            enabled = effectiveEnabled,
-            shape = shape,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = cs.primary,
-                contentColor = cs.onPrimary,
-                disabledContainerColor = cs.surfaceVariant,
-                disabledContentColor = cs.onSurfaceVariant,
-            ),
-            contentPadding = contentPadding,
-            content = rowContent,
-        )
+        ButtonStyle.Primary -> {
+            // Press-driven scale matching the HTML .btn:active rule.
+            val interaction = remember { MutableInteractionSource() }
+            val pressed by interaction.collectIsPressedAsState()
+            val pressScale by androidx.compose.animation.core.animateFloatAsState(
+                targetValue = if (pressed) 0.95f else 1f,
+                animationSpec = tween(
+                    durationMillis = MotionTokens.DurationShort2,
+                    easing = MotionTokens.PressEasing,
+                ),
+                label = "primary-press-scale",
+            )
+
+            // Brand gradient container (blue → violet) — matches HTML
+            // `linear-gradient(135deg,var(--accent1),var(--accent2))`.
+            val brandBrush = Brush.linearGradient(
+                colors = listOf(
+                    com.zenox.arrowmaze.core.designsystem.theme.BrandBlue,
+                    com.zenox.arrowmaze.core.designsystem.theme.BrandViolet,
+                ),
+            )
+
+            // Sheen overlay: a translucent diagonal gradient sweeping across
+            // the button every 3 seconds — matches the HTML `.sheen` element
+            // with `animation:sheen 3s ease infinite`.
+            val sheenTransition = rememberInfiniteTransition(label = "btn-sheen")
+            val sheenProgress by sheenTransition.animateFloat(
+                initialValue = 0f,
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(durationMillis = SHEEN_CYCLE_MS, easing = LinearEasing),
+                    repeatMode = RepeatMode.Restart,
+                ),
+                label = "btn-sheen-progress",
+            )
+
+            Surface(
+                modifier = modifier
+                    .defaultMinSize(minHeight = 48.dp)
+                    .scale(pressScale)
+                    .clip(shape)
+                    .clickable(
+                        interactionSource = interaction,
+                        indication = ripple(bounded = true),
+                        enabled = effectiveEnabled,
+                        role = Role.Button,
+                        onClick = onClick,
+                    ),
+                shape = shape,
+                color = Color.Transparent,
+                contentColor = Color.White,
+            ) {
+                Box {
+                    // Gradient background
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .drawWithContent {
+                                drawRect(brush = brandBrush)
+                                drawContent()
+                            },
+                    )
+                    // Sheen overlay
+                    if (effectiveEnabled) {
+                        SheenOverlay(progress = sheenProgress, modifier = Modifier.fillMaxSize())
+                    }
+                    Row(
+                        modifier = Modifier
+                            .padding(contentPadding)
+                            .align(Alignment.Center),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                        content = rowContent,
+                    )
+                }
+            }
+        }
 
         ButtonStyle.Secondary -> Button(
             onClick = onClick,
@@ -165,12 +254,13 @@ fun ArrowMazeButton(
         )
 
         ButtonStyle.Glass -> {
-            val container = cs.surface.copy(alpha = 0.55f)
+            val container = cs.surface.copy(alpha = 0.72f)
             val containerDisabled = cs.surfaceVariant.copy(alpha = 0.4f)
             val interactionSource = remember { MutableInteractionSource() }
             Surface(
                 modifier = modifier
                     .defaultMinSize(minHeight = 48.dp)
+                    .clip(shape)
                     .clickable(
                         interactionSource = interactionSource,
                         indication = ripple(bounded = true),
@@ -194,6 +284,38 @@ fun ArrowMazeButton(
                 )
             }
         }
+    }
+}
+
+/**
+ * Sweeping diagonal sheen overlay matching the HTML `.sheen` element.
+ * The progress (0..1) drives a translucent diagonal gradient sweeping
+ * from left-of-button to right-of-button every [SHEEN_CYCLE_MS] ms.
+ *
+ * Drawn directly on the Canvas — the gradient's transparent endpoints
+ * let the underlying brand-gradient background show through, so the
+ * sheen visually "wipes" across the button without replacing it.
+ */
+@Composable
+private fun SheenOverlay(progress: Float, modifier: Modifier = Modifier) {
+    androidx.compose.foundation.Canvas(modifier = modifier) {
+        val canvasWidth = size.width
+        // Sweep across -80% to +130% of the button width (matches HTML
+        // keyframes `0%,60%{left:-80%}100%{left:130%}`).
+        val sweepWidth = canvasWidth * 0.6f
+        val start = -sweepWidth + progress * (canvasWidth + sweepWidth * 1.5f)
+        val end = start + sweepWidth
+        drawRect(
+            brush = Brush.linearGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = 0f),
+                    Color.White.copy(alpha = 0.45f),
+                    Color.White.copy(alpha = 0f),
+                ),
+                start = androidx.compose.ui.geometry.Offset(start, 0f),
+                end = androidx.compose.ui.geometry.Offset(end, size.height),
+            ),
+        )
     }
 }
 
@@ -235,9 +357,12 @@ fun ArrowMazeIconButton(
 @Composable
 private fun contentColorFor(style: ButtonStyle, cs: ColorScheme): Color =
     when (style) {
-        ButtonStyle.Primary -> cs.onPrimary
+        ButtonStyle.Primary -> Color.White
         ButtonStyle.Secondary -> cs.onSecondary
         ButtonStyle.Tonal -> cs.onSecondaryContainer
         ButtonStyle.Outline -> cs.primary
         ButtonStyle.Glass -> cs.onSurface
     }
+
+/** Sheen sweep cycle in ms — matches HTML `.sheen { animation: sheen 3s … }`. */
+private const val SHEEN_CYCLE_MS: Int = 3_000
